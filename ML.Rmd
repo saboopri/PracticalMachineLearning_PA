@@ -1,0 +1,96 @@
+Practical Machine Learning Project
+========================================================
+# Introduction
+
+## Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: [LINK!](http://groupware.les.inf.puc-rio.br/har) (see the section on the Weight Lifting Exercise Dataset).
+
+## Data
+The training data for this project are available here: [Train Data](http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)
+
+The test data are available here: [Test Data](http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)
+
+## Goal
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set.
+
+# Report
+
+## Data Processing
+### Downloading and Reading Data 
+```{r cache=TRUE}
+URLtrain<-"http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+URLtest<-"http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+filetrain<-"pml-training.csv"
+filetest<-"pml_testing.csv"
+download.file(URLtrain, filetrain)
+download.file(URLtest, filetest)
+train<-read.csv(filetrain, na.strings=c("NA", "#DIV/0!", ""))
+test<-read.csv(filetest, na.strings=c("NA", "#DIV/0!", ""))
+```
+
+### Processing Data
+#### Cleaning Data
+*Removing NA's
+*Rmoving first 7 variables as they cannot be used to predict the 'classe' variable
+```{r}
+nai<-apply(train, 2, function(x){sum(is.na(x))})
+train<-train[, which(nai==0)]
+train<-train[, -seq(1:7)]
+nai<-apply(test, 2, function(x){sum(is.na(x))})
+test<-test[, which(nai==0)]
+test<-test[, -seq(1:7)]
+```
+#### Dividing Data for training and testing
+Dividing training data into training(70%) and testing(30%) data to test the accuracy of the algorithm.
+```{r}
+library(caret)
+index<-createDataPartition(y=train$classe, p=0.7, list=FALSE)
+traindata<-train[index,]
+testdata<-train[-index,]
+```
+#### Processing Data
+```{r}
+preProc<-preProcess(traindata[-53], method="pca")
+trainPP<-predict(preProc, traindata[,-53])
+trainPP$classe<-traindata$classe
+testPP<-predict(preProc, testdata[,-53])
+testPP$classe<-testdata$classe
+```
+
+
+## Model Fitting
+Using Random Forest Method as it is said to give the highest accuracy.
+```{r}
+model<-train(classe~., data=trainPP, method="rf", number=5, allowParalled=TRUE)
+```
+### Model
+```{r}
+model
+```
+
+## Cross Validation
+### Predicted Values
+```{r}
+pv<-predict(model, testPP)
+```
+### Comparing the actual and Predicted Values
+```{r}
+comp<-pv==testPP$classe
+summary(comp)
+```
+### Confusion Matrix
+```{r}
+confusionMatrix(pv, testPP$classe)
+```
+
+**Accuracy**
+the accuracy of algorithm is 97.84% as seen above in confusion matrix
+**Sample Error**
+the sample error for the algorithm is 2.16% (Sample Error = 100 - Accuracy)
+
+## Applying Algorithm on Given Test Data
+```{r}
+pvtest<-predict(preProc, test[,-53])
+answer<-predict(model, pvtest)
+answer
+```
